@@ -13,7 +13,7 @@ Extend the base converter with a rate history chart, multi-currency comparison, 
 - Display a line chart showing the exchange rate between the selected currency pair over the past 7 days
 - Use the **fl_chart** package for the chart — no WebView-based chart solutions
 - Chart must update when the currency pair changes
-- Fetch historical rates from the API (ExchangeRate-API supports 7-day history on the free tier) or fall back to mocked data if the API doesn't support it — **clearly note which approach you used in your README**
+- Fetch historical rates from the Frankfurter API — this is a requirement (no mocked data fallbacks)
 - Show axis labels with dates and rate values
 
 ## Additional Feature 2 — Multi-Currency Comparison

@@ -13,11 +13,9 @@ This is a real-world class of app. Currency converters are a category that exist
 | **Reference Challenge** | Foreign Exchange Currency Converter — Frontend Mentor |
 | **Original Stack** | HTML, CSS, JavaScript |
 | **Target Stack** | Flutter (Dart) — BLoC, Clean Architecture, HTTP/Dio, fl_chart |
-| **Live API Required** | Yes — ExchangeRate-API (free tier) or Open Exchange Rates |
+| **Live API Required** | Yes — Frankfurter (no API key required) |
 | **Platform Target** | Mobile (Android/iOS) — responsive layout is a bonus |
 | **Submission** | GitHub repository with APK or demo recording |
-
-> **Recommended API:** [ExchangeRate-API](https://www.exchangerate-api.com) — free tier gives 1,500 requests/month, supports latest rates and 7-day history. Register for a free API key before starting.
 
 ---
 

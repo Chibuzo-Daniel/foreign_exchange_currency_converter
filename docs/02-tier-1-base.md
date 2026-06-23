@@ -25,7 +25,7 @@ This tier is required for every mentee. See [`01-overview.md`](01-overview.md) f
 
 ### API Integration
 
-- Fetch live exchange rates from ExchangeRate-API or Open Exchange Rates
+- Fetch live exchange rates from the Frankfurter API (https://frankfurter.dev)
 - Use **Dio** or the **http** package for HTTP calls — no direct API calls from widgets
 - All API calls must go through a data source class (`RemoteDataSource` or equivalent)
 - Handle HTTP errors (network failure, 4xx, 5xx) and surface them cleanly to the UI

@@ -8,9 +8,7 @@ Tick these off as you go. This mirrors the grading rubrics in [`docs/02-tier-1-b
 
 - [ ] Forked the brief repository
 - [ ] Cloned my fork locally
-- [ ] Registered a free API key with ExchangeRate-API (or Open Exchange Rates)
-- [ ] Created `.env` from `.env.example` and added my real key
-- [ ] Confirmed `.env` is in `.gitignore` and not tracked by Git
+- [ ] Confirmed project files do not contain hardcoded credentials
 - [ ] Ran `flutter create .` to initialise the project inside this repo
 - [ ] Added required dependencies to `pubspec.yaml` and ran `flutter pub get`
 - [ ] Made my first commit
@@ -117,5 +115,4 @@ Tick these off as you go. This mirrors the grading rubrics in [`docs/02-tier-1-b
 - [ ] GitHub repository link ready to share
 - [ ] `README.md` updated with: tier attempted, API used, how to run the project, known limitations
 - [ ] Demo recording made, or APK built and tested
-- [ ] `.env.example` is accurate and up to date
 - [ ] Confirmed the project runs from a clean clone (not just on my own machine)

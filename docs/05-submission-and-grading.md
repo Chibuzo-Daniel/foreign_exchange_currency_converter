@@ -5,9 +5,7 @@
 - GitHub repository link — public, or shared with your mentor
 - `README.md` — which tier you attempted, which API you used, how to run the project, any known limitations
 - A demo recording (screen record) **or** an APK for Android testing
-- If you used a free API key, either include it in your README's instructions or provide a `.env.example` and document how to plug in a real key
-
-This repository already includes an `.env.example` template at its root — keep it, and make sure it accurately reflects what your project actually needs.
+- If you chose to use an alternative API that requires an API key, either include it in your README's instructions or provide a `.env.example` template at the root, documenting how to configure it.
 
 ---
 
