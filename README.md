@@ -15,7 +15,7 @@ This is a real-world class of app. Currency converters are a category that exist
 | **Reference Challenge** | Foreign Exchange Currency Converter — Frontend Mentor |
 | **Original Stack** | HTML, CSS, JavaScript |
 | **Target Stack** | Flutter (Dart) — BLoC, Clean Architecture, HTTP/Dio, fl_chart |
-| **Live API Required** | Yes — Frankfurter (no API key required) |
+| **Live API Required** | Yes — Frankfurter (no API key required), or Exchangerate-API (Optional) |
 | **Platform Target** | Mobile (Android/iOS) — responsive layout is a bonus |
 | **Submission** | GitHub repository with APK or demo recording |
 
