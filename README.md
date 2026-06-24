@@ -2,7 +2,7 @@
 
 **Flutter Mentorship Program — Final Project Brief**
 
-You've already built this once in JavaScript. You handled the API calls, the conversion logic, the UI updates. Now the question is: can you build the same thing in Flutter — with proper architecture, clean state management, and code that holds up to a review?
+You must've already built this once in JavaScript. You handled the API calls, the conversion logic, the UI updates. Now the question is: can you build the same thing in Flutter — with proper architecture, clean state management, and code that holds up to a review?
 
 This is a real-world class of app. Currency converters are a category that exists in every app store, and they require you to think carefully about API integration, async state, caching, error handling, and UX responsiveness. All of that is in scope here.
 
