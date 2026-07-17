@@ -29,6 +29,7 @@ This tier is required for every mentee. See [`01-overview.md`](01-overview.md) f
 - Use **Dio** or the **http** package for HTTP calls — no direct API calls from widgets
 - All API calls must go through a data source class (`RemoteDataSource` or equivalent)
 - Handle HTTP errors (network failure, 4xx, 5xx) and surface them cleanly to the UI
+- See [`07-frankfurter-api-guide.md`](07-frankfurter-api-guide.md) for the exact endpoints, real JSON response shapes, model classes, and a complete worked example
 
 ### Data & Models
 
@@ -78,3 +79,4 @@ This tier is required for every mentee. See [`01-overview.md`](01-overview.md) f
 - Attempting the Intermediate tier too? Go to [`03-tier-2-intermediate.md`](03-tier-2-intermediate.md)
 - Building with Tier 1 only? Go to [`05-submission-and-grading.md`](05-submission-and-grading.md) once you're done
 - Check required packages: [`04-recommended-packages.md`](04-recommended-packages.md)
+- Ready to write API code? Full guide with endpoints, models, and BLoC wiring: [`07-frankfurter-api-guide.md`](07-frankfurter-api-guide.md)

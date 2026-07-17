@@ -62,4 +62,6 @@ From here, follow the same Git habits from Week 3: branch per feature, atomic co
 
 Head to [`01-overview.md`](01-overview.md) to review the core features, then to [`02-tier-1-base.md`](02-tier-1-base.md) for the full technical requirements and recommended folder structure.
 
+When you reach the API integration part of your build, open [`07-frankfurter-api-guide.md`](07-frankfurter-api-guide.md) — it covers every Frankfurter endpoint, the exact JSON shapes you will parse, all model classes, and a complete step-by-step worked example.
+
 Use [`../CHECKLIST.md`](../CHECKLIST.md) to track your progress as you go.

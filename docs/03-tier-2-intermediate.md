@@ -15,6 +15,7 @@ Extend the base converter with a rate history chart, multi-currency comparison, 
 - Chart must update when the currency pair changes
 - Fetch historical rates from the Frankfurter API — this is a requirement (no mocked data fallbacks)
 - Show axis labels with dates and rate values
+- See [`07-frankfurter-api-guide.md#13-tier-2--history-chart-endpoint`](07-frankfurter-api-guide.md#13-tier-2--history-chart-endpoint) for the time-series endpoint, response shape, and how to map it to `FlSpot` data
 
 ## Additional Feature 2 — Multi-Currency Comparison
 
@@ -61,4 +62,5 @@ Extend the base converter with a rate history chart, multi-currency comparison, 
 ## Next Steps
 
 - Check required packages for this tier: [`04-recommended-packages.md`](04-recommended-packages.md)
+- Need the time-series endpoint and chart wiring? See [`07-frankfurter-api-guide.md`](07-frankfurter-api-guide.md#13-tier-2--history-chart-endpoint)
 - Ready to submit? Go to [`05-submission-and-grading.md`](05-submission-and-grading.md)

@@ -32,6 +32,7 @@ This is a real-world class of app. Currency converters are a category that exist
 | [`docs/04-recommended-packages.md`](docs/04-recommended-packages.md) | Required and recommended Flutter packages |
 | [`docs/05-submission-and-grading.md`](docs/05-submission-and-grading.md) | What to submit, how it's reviewed, and grade boundaries |
 | [`docs/06-ground-rules.md`](docs/06-ground-rules.md) | Non-negotiable rules — read before you start coding |
+| [`docs/07-frankfurter-api-guide.md`](docs/07-frankfurter-api-guide.md) | **API Integration Guide** — endpoints, JSON shapes, models, repository, BLoC wiring, error handling, and a full worked example |
 | [`CHECKLIST.md`](CHECKLIST.md) | A tickable checklist of every requirement — track your own progress |
 
 ---
@@ -44,9 +45,10 @@ This is a real-world class of app. Currency converters are a category that exist
    git clone git@github.com:YOUR-USERNAME/flutter-fx-converter.git
    cd flutter-fx-converter
    ```
-3. Read [`docs/00-getting-started.md`](docs/00-getting-started.md) for the full setup walkthrough — registering an API key, initialising your Flutter project inside this repo, and your first commit
+3. Read [`docs/00-getting-started.md`](docs/00-getting-started.md) for the full setup walkthrough — initialising your Flutter project inside this repo and your first commit
 4. Read [`docs/01-overview.md`](docs/01-overview.md), then decide which tier you're attempting and read the matching doc
-5. Use [`CHECKLIST.md`](CHECKLIST.md) to track your progress as you build
+5. When you are ready to integrate the API, read [`docs/07-frankfurter-api-guide.md`](docs/07-frankfurter-api-guide.md) — it covers every endpoint, the exact JSON shapes, all model classes, and a complete worked example
+6. Use [`CHECKLIST.md`](CHECKLIST.md) to track your progress as you build
 
 ---
 
