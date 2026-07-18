@@ -1,6 +1,6 @@
 ﻿# Frankfurter API — Integration Guide
 
-> **Who this is for:** This document is a practical reference for mentees integrating the Frankfurter exchange-rate API into their Flutter project. It picks up where [`02-tier-1-base.md`](02-tier-1-base.md) and [`03-tier-2-intermediate.md`](03-tier-2-intermediate.md) leave off — the tier documents tell you *what* to build; this document shows you *how* to talk to the API and wire it into your architecture.
+> **Who this is for:** This document is a practical reference for mentees integrating the Frankfurter exchange-rate API into their Flutter project. It picks up where [`02-tier-1-base.md`](02-tier-1-base.md) and [`03-tier-2-intermediate.md`](03-tier-2-intermediate.md) leave off — the tier documents tell you *what* to build; this document tells you what the API gives you and what your architecture is responsible for doing with it. The implementation is yours to write.
 
 ---
 
@@ -17,7 +17,7 @@
 9. [Error Handling](#9-error-handling)
 10. [Loading States in the UI](#10-loading-states-in-the-ui)
 11. [Folder Structure Recap](#11-folder-structure-recap)
-12. [End-to-End Worked Example](#12-end-to-end-worked-example)
+12. [End-to-End Data Flow](#12-end-to-end-data-flow)
 13. [Tier 2 — History Chart Endpoint](#13-tier-2--history-chart-endpoint)
 
 ---
@@ -37,7 +37,7 @@
 
 ## 2. Base URL and API Version
 
-This project targets **v2** of the Frankfurter API. Define the base URL as a constant so it never appears as a magic string in your code:
+This project targets **v2** of the Frankfurter API. Define the base URL once as a constant so it never appears as a magic string anywhere in your code:
 
 ```dart
 // lib/core/constants/api_constants.dart
@@ -47,7 +47,7 @@ abstract final class ApiConstants {
 }
 ```
 
-> **Tip:** Keeping constants in a dedicated file means a URL change is a one-line fix anywhere in the project.
+Every endpoint URL in this guide is built from this base.
 
 ---
 
@@ -55,7 +55,7 @@ abstract final class ApiConstants {
 
 ### 3.1 — List All Currencies (Tier 1)
 
-Fetches every currency the API supports, including its ISO code and human-readable name.
+Fetches every currency the API supports, with its ISO code and human-readable name.
 
 ```
 GET /currencies
@@ -66,13 +66,13 @@ GET /currencies
 https://api.frankfurter.dev/v2/currencies
 ```
 
-**When to call it:** Once, on app start. Store the list so the user can pick from a dropdown.
+**When to call it:** Once on app start. Store the result so the user can pick from a dropdown throughout the session.
 
 ---
 
-### 3.2 — Latest Exchange Rate for a Pair (Tier 1)
+### 3.2 — Latest Rate for a Single Pair (Tier 1)
 
-Fetches the current rate between exactly two currencies. This is the primary endpoint for your converter.
+Fetches the current exchange rate between exactly two currencies.
 
 ```
 GET /rate/{base}/{quote}
@@ -83,13 +83,13 @@ GET /rate/{base}/{quote}
 https://api.frankfurter.dev/v2/rate/USD/EUR
 ```
 
-**When to call it:** Every time the user selects a new currency pair or taps "refresh".
+**When to call it:** Every time the user selects a new currency pair, swaps the pair, or manually refreshes.
 
 ---
 
 ### 3.3 — Latest Rates for Multiple Targets (Tier 1 and 2)
 
-Fetches the latest rate from one base currency to several target currencies at once. Used for the multi-currency comparison list in Tier 2.
+Fetches the latest rate from one base currency to several target currencies at once.
 
 ```
 GET /rates?base={base}&quotes={quote1},{quote2},...
@@ -100,11 +100,13 @@ GET /rates?base={base}&quotes={quote1},{quote2},...
 https://api.frankfurter.dev/v2/rates?base=USD&quotes=EUR,GBP,JPY,NGN
 ```
 
+**When to call it:** Used for the multi-currency comparison list in Tier 2.
+
 ---
 
 ### 3.4 — Time-Series / 7-Day History (Tier 2)
 
-Fetches daily rates for a currency pair over a date range. Used for the history chart.
+Fetches daily rates for a currency pair over a date range.
 
 ```
 GET /rates?base={base}&quotes={quote}&from={YYYY-MM-DD}&to={YYYY-MM-DD}
@@ -115,15 +117,17 @@ GET /rates?base={base}&quotes={quote}&from={YYYY-MM-DD}&to={YYYY-MM-DD}
 https://api.frankfurter.dev/v2/rates?base=USD&quotes=EUR&from=2026-07-10&to=2026-07-17
 ```
 
+**When to call it:** When the user views the history chart, and again whenever the currency pair changes.
+
 ---
 
 ## 4. Real JSON Responses
 
-These are live, unmodified responses from the API so you know exactly what shapes to parse.
+These are live, unmodified responses from the API. Study the shape of each one carefully — your `fromJson` factories must map exactly these fields.
 
 ### 4.1 — `/currencies` Response
 
-Returns a JSON array. Each element has these fields:
+Returns a JSON **array**. Each element represents one currency:
 
 ```json
 [
@@ -146,13 +150,13 @@ Returns a JSON array. Each element has these fields:
 ]
 ```
 
-> **Note:** The array contains 201 items. For your dropdown you only need `iso_code` and `name`. `symbol` is a bonus for display polish.
+> The array contains 201 items. For your `Currency` model you only need `iso_code`, `name`, and optionally `symbol`.
 
 ---
 
 ### 4.2 — `/rate/{base}/{quote}` Response
 
-Returns a single JSON object:
+Returns a **single JSON object**:
 
 ```json
 {
@@ -167,7 +171,7 @@ Returns a single JSON object:
 
 ### 4.3 — `/rates?base=...&quotes=...` Response
 
-Returns a JSON array — one object per requested target currency:
+Returns a JSON **array** — one object per requested target currency:
 
 ```json
 [
@@ -182,7 +186,7 @@ Returns a JSON array — one object per requested target currency:
 
 ### 4.4 — Time-Series Response
 
-Same array structure, but with one entry per calendar day in the range. Weekends repeat the last business-day rate:
+Same array structure as above — one entry per **calendar day** in the requested range. Weekends repeat the last business-day rate (this is expected and accurate):
 
 ```json
 [
@@ -197,115 +201,66 @@ Same array structure, but with one entry per calendar day in the range. Weekends
 ]
 ```
 
-> **Tip for the chart:** Weekend entries duplicate the last Friday rate. That is expected — simply plot all dates as-is. The flat segment on weekends is accurate.
-
 ---
 
 ## 5. Model Classes
 
-Never pass raw `Map<String, dynamic>` between layers. Define typed models and parse JSON in one place.
+Never pass raw `Map<String, dynamic>` between layers. Define typed models and centralise all JSON parsing inside them via `fromJson` factory constructors.
+
+The brief requires two models at minimum. A third is needed for Tier 2.
+
+---
 
 ### 5.1 — `Currency`
 
-```dart
-// lib/models/currency.dart
+**File:** `lib/models/currency.dart`
 
-class Currency {
-  final String code;    // e.g. "USD"
-  final String name;    // e.g. "United States Dollar"
-  final String symbol;  // e.g. "$"
+Your `Currency` class should have these fields:
 
-  const Currency({
-    required this.code,
-    required this.name,
-    required this.symbol,
-  });
+| Field | Type | Source in JSON | Notes |
+|---|---|---|---|
+| `code` | `String` | `iso_code` | e.g. `"USD"` |
+| `name` | `String` | `name` | e.g. `"United States Dollar"` |
+| `symbol` | `String` | `symbol` | e.g. `"$"` — use empty string as fallback if null |
 
-  /// Builds a Currency from one element of the /currencies JSON array.
-  factory Currency.fromJson(Map<String, dynamic> json) {
-    return Currency(
-      code: json['iso_code'] as String,
-      name: json['name'] as String,
-      symbol: (json['symbol'] as String?) ?? '',
-    );
-  }
-
-  /// Derives an emoji flag from the first two letters of the currency code.
-  /// Works for most major currencies; commodities (XAU, XAG) will not match.
-  String get flagEmoji {
-    final countryCode = code.substring(0, 2);
-    return countryCode.split('').map((c) {
-      return String.fromCharCode(c.codeUnitAt(0) - 0x41 + 0x1F1E6);
-    }).join();
-  }
-
-  @override
-  String toString() => '$code — $name';
-}
-```
+Your class must include:
+- A `const` constructor
+- A `Currency.fromJson(Map<String, dynamic> json)` factory that maps the fields above
+- Optionally: a `flagEmoji` getter — the first two letters of most currency codes match an ISO country code, which can be mapped to a regional indicator emoji
 
 ---
 
 ### 5.2 — `ExchangeRate`
 
-```dart
-// lib/models/exchange_rate.dart
+**File:** `lib/models/exchange_rate.dart`
 
-class ExchangeRate {
-  final String base;          // e.g. "USD"
-  final String quote;         // e.g. "EUR"
-  final double rate;          // e.g. 0.87241
-  final DateTime lastUpdated; // parsed from the "date" field
+| Field | Type | Source in JSON | Notes |
+|---|---|---|---|
+| `base` | `String` | `base` | e.g. `"USD"` |
+| `quote` | `String` | `quote` | e.g. `"EUR"` |
+| `rate` | `double` | `rate` | Cast via `(json['rate'] as num).toDouble()` |
+| `lastUpdated` | `DateTime` | `date` | Parse via `DateTime.parse(...)` |
 
-  const ExchangeRate({
-    required this.base,
-    required this.quote,
-    required this.rate,
-    required this.lastUpdated,
-  });
-
-  /// Parses the response from GET /rate/{base}/{quote}.
-  factory ExchangeRate.fromJson(Map<String, dynamic> json) {
-    return ExchangeRate(
-      base: json['base'] as String,
-      quote: json['quote'] as String,
-      rate: (json['rate'] as num).toDouble(),
-      lastUpdated: DateTime.parse(json['date'] as String),
-    );
-  }
-
-  /// Converts [amount] in the base currency to the quote currency.
-  double convert(double amount) => amount * rate;
-
-  /// Human-readable label, e.g. "1 USD = 0.8724 EUR".
-  String get rateLabel => '1 $base = ${rate.toStringAsFixed(4)} $quote';
-}
-```
+Your class must include:
+- A `const` constructor
+- A `ExchangeRate.fromJson(Map<String, dynamic> json)` factory
+- A `convert(double amount)` method that returns the converted result — this is pure arithmetic, no API calls
+- A `rateLabel` getter that produces a string like `"1 USD = 0.8724 EUR"` — used in the UI
 
 ---
 
-### 5.3 — `RatePoint` (Tier 2 — History Chart)
+### 5.3 — `RatePoint` (Tier 2)
 
-Holds one data point from the time-series endpoint.
+**File:** `lib/models/rate_point.dart`
 
-```dart
-// lib/models/rate_point.dart
+Holds one data point from the time-series response. Used to populate the history chart.
 
-class RatePoint {
-  final DateTime date;
-  final double rate;
+| Field | Type | Source in JSON |
+|---|---|---|
+| `date` | `DateTime` | `date` |
+| `rate` | `double` | `rate` |
 
-  const RatePoint({required this.date, required this.rate});
-
-  /// Parses one element from the time-series array.
-  factory RatePoint.fromJson(Map<String, dynamic> json) {
-    return RatePoint(
-      date: DateTime.parse(json['date'] as String),
-      rate: (json['rate'] as num).toDouble(),
-    );
-  }
-}
-```
+Your class must include a `RatePoint.fromJson(Map<String, dynamic> json)` factory.
 
 ---
 
@@ -313,15 +268,10 @@ class RatePoint {
 
 The data source is the **only** place in your app that makes HTTP calls. No widget, BLoC, or repository should ever call `http.get(...)` directly.
 
+### Define the abstract interface first
+
 ```dart
 // lib/data/datasources/remote_data_source.dart
-
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../../core/constants/api_constants.dart';
-import '../../models/currency.dart';
-import '../../models/exchange_rate.dart';
-import '../../models/rate_point.dart';
 
 abstract interface class RemoteDataSource {
   Future<List<Currency>> fetchCurrencies();
@@ -329,125 +279,55 @@ abstract interface class RemoteDataSource {
   Future<List<ExchangeRate>> fetchRates(String base, List<String> quotes);
   Future<List<RatePoint>> fetchHistory(String base, String quote, int days);
 }
+```
 
-class RemoteDataSourceImpl implements RemoteDataSource {
-  final http.Client _client;
+### Implement the concrete class
 
-  RemoteDataSourceImpl({http.Client? client})
-      : _client = client ?? http.Client();
+Create `RemoteDataSourceImpl` that implements the interface above. Here is one method shown in full to illustrate the pattern — implement the remaining three yourself:
 
-  @override
-  Future<List<Currency>> fetchCurrencies() async {
-    final uri = Uri.parse('${ApiConstants.baseUrl}/currencies');
-    final response = await _client.get(uri);
-    _checkStatus(response);
+```dart
+// One method shown as a reference — implement the others following the same pattern.
 
-    final List<dynamic> data = jsonDecode(response.body) as List<dynamic>;
-    return data
-        .map((e) => Currency.fromJson(e as Map<String, dynamic>))
-        .toList();
-  }
+Future<ExchangeRate> fetchRate(String base, String quote) async {
+  final uri = Uri.parse('${ApiConstants.baseUrl}/rate/$base/$quote');
+  final response = await _client.get(uri);
 
-  @override
-  Future<ExchangeRate> fetchRate(String base, String quote) async {
-    final uri = Uri.parse('${ApiConstants.baseUrl}/rate/$base/$quote');
-    final response = await _client.get(uri);
-    _checkStatus(response);
+  // You must validate the HTTP status code here.
+  // If the status is not 2xx, parse the error body and throw an ApiException.
+  _checkStatus(response);
 
-    final Map<String, dynamic> data =
-        jsonDecode(response.body) as Map<String, dynamic>;
-    return ExchangeRate.fromJson(data);
-  }
-
-  @override
-  Future<List<ExchangeRate>> fetchRates(
-      String base, List<String> quotes) async {
-    final uri = Uri.parse(
-      '${ApiConstants.baseUrl}/rates'
-      '?base=$base'
-      '&quotes=${quotes.join(",")}',
-    );
-    final response = await _client.get(uri);
-    _checkStatus(response);
-
-    final List<dynamic> data = jsonDecode(response.body) as List<dynamic>;
-    return data
-        .map((e) => ExchangeRate.fromJson(e as Map<String, dynamic>))
-        .toList();
-  }
-
-  @override
-  Future<List<RatePoint>> fetchHistory(
-      String base, String quote, int days) async {
-    final to = DateTime.now();
-    final from = to.subtract(Duration(days: days - 1));
-
-    // Format a DateTime as YYYY-MM-DD
-    String fmt(DateTime d) =>
-        '${d.year.toString().padLeft(4, '0')}'
-        '-${d.month.toString().padLeft(2, '0')}'
-        '-${d.day.toString().padLeft(2, '0')}';
-
-    final uri = Uri.parse(
-      '${ApiConstants.baseUrl}/rates'
-      '?base=$base'
-      '&quotes=$quote'
-      '&from=${fmt(from)}'
-      '&to=${fmt(to)}',
-    );
-
-    final response = await _client.get(uri);
-    _checkStatus(response);
-
-    final List<dynamic> data = jsonDecode(response.body) as List<dynamic>;
-    return data
-        .map((e) => RatePoint.fromJson(e as Map<String, dynamic>))
-        .toList();
-  }
-
-  /// Throws [ApiException] for any non-2xx status code.
-  void _checkStatus(http.Response response) {
-    if (response.statusCode >= 200 && response.statusCode < 300) return;
-
-    // The API returns {"message": "..."} on error responses.
-    String message = 'HTTP ${response.statusCode}';
-    try {
-      final body = jsonDecode(response.body) as Map<String, dynamic>;
-      message = body['message'] as String? ?? message;
-    } catch (_) {}
-
-    throw ApiException(statusCode: response.statusCode, message: message);
-  }
-}
-
-/// Thrown when the Frankfurter API returns a non-2xx HTTP status.
-class ApiException implements Exception {
-  final int statusCode;
-  final String message;
-
-  const ApiException({required this.statusCode, required this.message});
-
-  @override
-  String toString() => 'ApiException($statusCode): $message';
+  // Decode the JSON body and hand it to your model's fromJson factory.
+  final data = jsonDecode(response.body) as Map<String, dynamic>;
+  return ExchangeRate.fromJson(data);
 }
 ```
 
-> **Why inject `http.Client`?** It makes the class testable — in unit tests you pass a `MockClient` that returns fake JSON without hitting the real network.
+**What you need to implement:**
+
+| Method | Endpoint to call | Response shape | Returns |
+|---|---|---|---|
+| `fetchCurrencies()` | `GET /currencies` | JSON array | `List<Currency>` |
+| `fetchRate(base, quote)` | `GET /rate/{base}/{quote}` | Single JSON object | `ExchangeRate` |
+| `fetchRates(base, quotes)` | `GET /rates?base=...&quotes=...` | JSON array | `List<ExchangeRate>` |
+| `fetchHistory(base, quote, days)` | `GET /rates?base=...&quotes=...&from=...&to=...` | JSON array | `List<RatePoint>` |
+
+**For `fetchHistory`:** You need to compute `from` and `to` dates dynamically at call time. `to` is today; `from` is `days - 1` days before today. Format both as `YYYY-MM-DD` strings.
+
+**Status checking:** Define a private `_checkStatus(http.Response response)` method. If the status code is not in the 2xx range, decode the response body (the API returns `{"message": "..."}`) and throw an `ApiException`. Define `ApiException` in the same file as a class that implements `Exception` and carries a `statusCode` and `message`.
+
+> **Tip on testability:** Inject `http.Client` through the constructor rather than creating it inside the class. This lets you pass a mock client in tests without hitting the real network.
 
 ---
 
 ## 7. Repository Layer
 
-The repository sits between the data source and the BLoC. It is where you add caching (Tier 2) and translate low-level exceptions into domain errors the BLoC can handle.
+The repository sits between the data source and the BLoC. It is where caching belongs (Tier 2), and where you can translate low-level exceptions into errors that make sense at the domain level.
+
+### Define the abstract interface
 
 ```dart
 // lib/data/repositories/currency_repository.dart
 
-import '../../models/currency.dart';
-import '../../models/exchange_rate.dart';
-import '../../models/rate_point.dart';
-
-/// Abstract contract — the BLoC depends on this, not on the concrete impl.
 abstract interface class CurrencyRepository {
   Future<List<Currency>> getCurrencies();
   Future<ExchangeRate> getRate(String base, String quote);
@@ -456,300 +336,114 @@ abstract interface class CurrencyRepository {
 }
 ```
 
-```dart
-// lib/data/repositories/currency_repository_impl.dart
+The BLoC must depend on this interface, not on the concrete implementation. This is the repository pattern.
 
-import '../datasources/remote_data_source.dart';
-import 'currency_repository.dart';
-import '../../models/currency.dart';
-import '../../models/exchange_rate.dart';
-import '../../models/rate_point.dart';
+### Implement the concrete class
 
-class CurrencyRepositoryImpl implements CurrencyRepository {
-  final RemoteDataSource _remoteDataSource;
+`CurrencyRepositoryImpl` takes a `RemoteDataSource` as a constructor argument and delegates each method call to it.
 
-  CurrencyRepositoryImpl(this._remoteDataSource);
+For Tier 1, each method is a simple delegation — call the matching data source method and return its result.
 
-  @override
-  Future<List<Currency>> getCurrencies() =>
-      _remoteDataSource.fetchCurrencies();
-
-  @override
-  Future<ExchangeRate> getRate(String base, String quote) =>
-      _remoteDataSource.fetchRate(base, quote);
-
-  @override
-  Future<List<ExchangeRate>> getRates(String base, List<String> quotes) =>
-      _remoteDataSource.fetchRates(base, quotes);
-
-  @override
-  Future<List<RatePoint>> getHistory(String base, String quote, int days) =>
-      _remoteDataSource.fetchHistory(base, quote, days);
-}
-```
-
-> **For Tier 2 caching:** Add a `SharedPreferences` or `Hive` dependency to `CurrencyRepositoryImpl`. Before calling the data source, check if a cached rate exists and is younger than 1 hour. Only hit the network when the cache is stale or empty.
+For Tier 2 caching, before delegating to the data source, check whether a valid cached result exists (younger than 1 hour). Return the cache if it is still fresh; call the data source and update the cache if it is stale or absent.
 
 ---
 
 ## 8. BLoC Wiring
 
-The BLoC receives events, calls the repository, and emits states. It never touches HTTP or JSON directly.
+The BLoC receives events from the UI, calls the repository, and emits states. It must never know about HTTP, JSON, or the data source.
 
 ### Events
 
-```dart
-// lib/bloc/currency_event.dart
+Your `CurrencyBloc` must handle at minimum:
 
-abstract class CurrencyEvent {}
-
-class LoadCurrencies extends CurrencyEvent {}
-
-class SelectBaseCurrency extends CurrencyEvent {
-  final String code;
-  SelectBaseCurrency(this.code);
-}
-
-class SelectTargetCurrency extends CurrencyEvent {
-  final String code;
-  SelectTargetCurrency(this.code);
-}
-
-class SetAmount extends CurrencyEvent {
-  final double amount;
-  SetAmount(this.amount);
-}
-
-class SwapCurrencies extends CurrencyEvent {}
-
-class FetchRates extends CurrencyEvent {}
-```
+| Event | When it is dispatched |
+|---|---|
+| `LoadCurrencies` | On app start — fetches the full currency list |
+| `SelectBaseCurrency(code)` | When the user picks a new base currency |
+| `SelectTargetCurrency(code)` | When the user picks a new target currency |
+| `SetAmount(amount)` | When the user types a new amount |
+| `SwapCurrencies` | When the user taps the swap button |
+| `FetchRates` | Internally, after any selection that changes the currency pair |
 
 ### State
 
-```dart
-// lib/bloc/currency_state.dart
+Your `CurrencyState` must expose:
 
-import '../models/currency.dart';
-import '../models/exchange_rate.dart';
+| Field | Type | Purpose |
+|---|---|---|
+| `currencies` | `List<Currency>` | Populated on load; backs the dropdowns |
+| `baseCurrencyCode` | `String` | Currently selected base |
+| `targetCurrencyCode` | `String` | Currently selected target |
+| `amount` | `double` | The value the user has entered |
+| `exchangeRate` | `ExchangeRate?` | Null until the first fetch completes |
+| `status` | `RateStatus` enum | `initial`, `loading`, `loaded`, or `error` |
+| `errorMessage` | `String?` | Human-readable error for display |
 
-enum RateStatus { initial, loading, loaded, error }
+Add two **derived getters** to `CurrencyState` — do not compute these in the widget:
+- `convertedAmount` — `null` if no rate has been fetched, otherwise `amount * rate`
+- `rateLabel` — delegates to `ExchangeRate.rateLabel`, or `null` if no rate
 
-class CurrencyState {
-  final List<Currency> currencies;
-  final String baseCurrencyCode;
-  final String targetCurrencyCode;
-  final double amount;
-  final ExchangeRate? exchangeRate;
-  final RateStatus status;
-  final String? errorMessage;
+### What each event handler must do
 
-  const CurrencyState({
-    this.currencies = const [],
-    this.baseCurrencyCode = 'USD',
-    this.targetCurrencyCode = 'EUR',
-    this.amount = 1.0,
-    this.exchangeRate,
-    this.status = RateStatus.initial,
-    this.errorMessage,
-  });
+**`LoadCurrencies`**
+1. Emit a loading state
+2. Call `repository.getCurrencies()`
+3. On success: emit loaded state with the currency list, then immediately dispatch `FetchRates` for the default pair
+4. On failure: emit an error state with a human-readable message
 
-  /// Converted result — null until a rate has been fetched.
-  double? get convertedAmount =>
-      exchangeRate != null ? exchangeRate!.convert(amount) : null;
+**`FetchRates`**
+1. Emit a loading state
+2. Call `repository.getRate(baseCurrencyCode, targetCurrencyCode)`
+3. On success: emit loaded state with the new `ExchangeRate`
+4. On failure: emit an error state — preserve the last known rate if one exists, so the UI does not go blank
 
-  /// Human-readable rate string, e.g. "1 USD = 0.8724 EUR".
-  String? get rateLabel => exchangeRate?.rateLabel;
+**`SelectBaseCurrency` / `SelectTargetCurrency`**
+1. Update the relevant code in state
+2. Dispatch `FetchRates` — the rate must refresh automatically on every pair change
 
-  CurrencyState copyWith({
-    List<Currency>? currencies,
-    String? baseCurrencyCode,
-    String? targetCurrencyCode,
-    double? amount,
-    ExchangeRate? exchangeRate,
-    RateStatus? status,
-    String? errorMessage,
-  }) {
-    return CurrencyState(
-      currencies: currencies ?? this.currencies,
-      baseCurrencyCode: baseCurrencyCode ?? this.baseCurrencyCode,
-      targetCurrencyCode: targetCurrencyCode ?? this.targetCurrencyCode,
-      amount: amount ?? this.amount,
-      exchangeRate: exchangeRate ?? this.exchangeRate,
-      status: status ?? this.status,
-      errorMessage: errorMessage ?? this.errorMessage,
-    );
-  }
-}
-```
+**`SetAmount`**
+1. Update `amount` in state only
+2. No network call — `convertedAmount` is a derived getter, so the UI updates automatically
 
-### BLoC
-
-```dart
-// lib/bloc/currency_bloc.dart
-
-import 'dart:io';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import '../data/repositories/currency_repository.dart';
-import '../data/datasources/remote_data_source.dart';
-import 'currency_event.dart';
-import 'currency_state.dart';
-
-class CurrencyBloc extends Bloc<CurrencyEvent, CurrencyState> {
-  final CurrencyRepository _repository;
-
-  CurrencyBloc(this._repository) : super(const CurrencyState()) {
-    on<LoadCurrencies>(_onLoadCurrencies);
-    on<SelectBaseCurrency>(_onSelectBase);
-    on<SelectTargetCurrency>(_onSelectTarget);
-    on<SetAmount>(_onSetAmount);
-    on<SwapCurrencies>(_onSwap);
-    on<FetchRates>(_onFetchRates);
-  }
-
-  Future<void> _onLoadCurrencies(
-    LoadCurrencies event,
-    Emitter<CurrencyState> emit,
-  ) async {
-    emit(state.copyWith(status: RateStatus.loading));
-    try {
-      final currencies = await _repository.getCurrencies();
-      emit(state.copyWith(currencies: currencies, status: RateStatus.loaded));
-      add(FetchRates()); // fetch rates for the default pair immediately
-    } on SocketException {
-      emit(state.copyWith(
-        status: RateStatus.error,
-        errorMessage: 'No internet connection.',
-      ));
-    } on ApiException catch (e) {
-      emit(state.copyWith(status: RateStatus.error, errorMessage: e.message));
-    } catch (_) {
-      emit(state.copyWith(
-        status: RateStatus.error,
-        errorMessage: 'Could not load currencies. Please try again.',
-      ));
-    }
-  }
-
-  Future<void> _onFetchRates(
-    FetchRates event,
-    Emitter<CurrencyState> emit,
-  ) async {
-    emit(state.copyWith(status: RateStatus.loading));
-    try {
-      final rate = await _repository.getRate(
-        state.baseCurrencyCode,
-        state.targetCurrencyCode,
-      );
-      emit(state.copyWith(
-        exchangeRate: rate,
-        status: RateStatus.loaded,
-        errorMessage: null,
-      ));
-    } on SocketException {
-      emit(state.copyWith(
-        status: RateStatus.error,
-        errorMessage: 'No internet connection.',
-      ));
-    } on ApiException catch (e) {
-      emit(state.copyWith(status: RateStatus.error, errorMessage: e.message));
-    } catch (_) {
-      emit(state.copyWith(
-        status: RateStatus.error,
-        errorMessage: 'Could not fetch rate. Please try again.',
-      ));
-    }
-  }
-
-  void _onSelectBase(
-      SelectBaseCurrency event, Emitter<CurrencyState> emit) {
-    emit(state.copyWith(baseCurrencyCode: event.code));
-    add(FetchRates());
-  }
-
-  void _onSelectTarget(
-      SelectTargetCurrency event, Emitter<CurrencyState> emit) {
-    emit(state.copyWith(targetCurrencyCode: event.code));
-    add(FetchRates());
-  }
-
-  void _onSetAmount(SetAmount event, Emitter<CurrencyState> emit) {
-    // No network call needed — conversion is local arithmetic on the stored rate.
-    emit(state.copyWith(amount: event.amount));
-  }
-
-  void _onSwap(SwapCurrencies event, Emitter<CurrencyState> emit) {
-    emit(state.copyWith(
-      baseCurrencyCode: state.targetCurrencyCode,
-      targetCurrencyCode: state.baseCurrencyCode,
-      exchangeRate: null, // clear stale rate before refreshing
-    ));
-    add(FetchRates());
-  }
-}
-```
+**`SwapCurrencies`**
+1. Swap `baseCurrencyCode` and `targetCurrencyCode` in state
+2. Clear `exchangeRate` to avoid displaying a stale result during the refresh
+3. Dispatch `FetchRates`
 
 ---
 
 ## 9. Error Handling
 
-### What can go wrong?
+### What can go wrong
 
-| Scenario | Type | How to detect |
+| Scenario | Exception type | How to detect |
 |---|---|---|
-| No internet | `SocketException` | `on SocketException` catch clause |
-| Bad currency code (typo) | `ApiException` (404) | `statusCode == 404` |
-| Malformed query parameter | `ApiException` (400) | `statusCode == 400` |
-| API server error | `ApiException` (500+) | `statusCode >= 500` |
-| Request timeout | `TimeoutException` | `.timeout(duration)` on the future |
+| No internet connection | `SocketException` (`dart:io`) | `on SocketException` catch clause |
+| Unknown currency code | `ApiException` (HTTP 404) | `e.statusCode == 404` |
+| Malformed query | `ApiException` (HTTP 400) | `e.statusCode == 400` |
+| Server error | `ApiException` (HTTP 5xx) | `e.statusCode >= 500` |
+| Request timeout | `TimeoutException` | Apply `.timeout(duration)` to the HTTP future |
 
-### The rule: never let an error reach a widget unseen
+### The non-negotiable rule
 
-Every failure path must produce a state with `status: RateStatus.error` and a human-readable `errorMessage`. The widget shows that message. A raw exception string or a blank screen is always a bug.
+Every failure path in every BLoC event handler must emit a state with `status: RateStatus.error` and a human-readable `errorMessage`. A raw exception message, a stack trace, or a blank screen reaching the user is always a bug — and is graded accordingly.
+
+Catch exceptions in this order: specific types first (`SocketException`, `ApiException`), then a final generic `catch` as a safety net.
 
 ---
 
 ## 10. Loading States in the UI
 
-Use Dart's `switch` expression on `RateStatus` so the compiler forces you to handle every case:
+Your UI must visibly respond to all four values of `RateStatus`. Use a `BlocBuilder` and switch on `state.status`:
 
-```dart
-BlocBuilder<CurrencyBloc, CurrencyState>(
-  builder: (context, state) {
-    return switch (state.status) {
-      RateStatus.initial => const Center(
-          child: Text('Select currencies to get started'),
-        ),
-      RateStatus.loading => const Center(
-          child: CircularProgressIndicator(),
-        ),
-      RateStatus.error => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline, color: Colors.red, size: 40),
-              const SizedBox(height: 8),
-              Text(
-                state.errorMessage ?? 'Something went wrong.',
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                // Always give the user a way to retry without restarting.
-                onPressed: () =>
-                    context.read<CurrencyBloc>().add(FetchRates()),
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
-        ),
-      RateStatus.loaded => ConversionResult(state: state),
-    };
-  },
-)
-```
+| Status | What the user sees |
+|---|---|
+| `initial` | A prompt to select currencies and get started |
+| `loading` | A `CircularProgressIndicator` — never a frozen UI |
+| `error` | The `errorMessage` string + a **Retry** button that re-dispatches `FetchRates` |
+| `loaded` | The conversion result and rate label |
 
-> **Rule of thumb:** Every error state needs a Retry button. Do not make a user restart the app to recover from a temporary network blip.
+The Retry button is required. Do not make a user restart the app to recover from a temporary network failure.
 
 ---
 
@@ -786,194 +480,110 @@ lib/
 
 ---
 
-## 12. End-to-End Worked Example
+## 12. End-to-End Data Flow
 
-This traces a complete user journey: **app launches, currencies load, user picks USD to NGN, enters 50, sees the result.**
+This traces the full journey of a user action through every layer of the architecture — from tap to rendered result. No layer is skipped; no layer does more than its job.
 
-### Step 1 — Dependency injection in `main.dart`
+---
 
-```dart
-// lib/main.dart
+**App launch**
 
-import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:http/http.dart' as http;
+`main.dart` constructs the dependency chain and provides it to the widget tree:
 
-import 'bloc/currency_bloc.dart';
-import 'bloc/currency_event.dart';
-import 'data/datasources/remote_data_source.dart';
-import 'data/repositories/currency_repository_impl.dart';
-import 'screens/converter_screen.dart';
-
-void main() => runApp(const FxConverterApp());
-
-class FxConverterApp extends StatelessWidget {
-  const FxConverterApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocProvider(
-      // Dependency chain: http.Client -> DataSource -> Repository -> BLoC
-      create: (_) => CurrencyBloc(
-        CurrencyRepositoryImpl(
-          RemoteDataSourceImpl(client: http.Client()),
-        ),
-      )..add(LoadCurrencies()), // first API call on startup
-      child: const MaterialApp(
-        title: 'FX Converter',
-        home: ConverterScreen(),
-      ),
-    );
-  }
-}
+```
+http.Client  →  RemoteDataSourceImpl  →  CurrencyRepositoryImpl  →  CurrencyBloc
 ```
 
-### Step 2 — BLoC handles `LoadCurrencies`
+The BLoC is created and `LoadCurrencies` is dispatched immediately.
 
-1. Emits `status: RateStatus.loading` → UI shows a `CircularProgressIndicator`.
-2. Calls `repository.getCurrencies()` which calls `dataSource.fetchCurrencies()`.
-3. HTTP GET `https://api.frankfurter.dev/v2/currencies` returns a 201-item array.
-4. Each item is parsed into a `Currency` object via `Currency.fromJson(...)`.
-5. Emits `status: RateStatus.loaded, currencies: [...]`.
-6. Dispatches `FetchRates()` for the default pair (USD to EUR).
+---
 
-### Step 3 — User selects NGN as the target
+**Step 1 — Currencies load**
 
-The dropdown dispatches:
-```dart
-context.read<CurrencyBloc>().add(SelectTargetCurrency('NGN'));
-```
+`LoadCurrencies` arrives at the BLoC.
+The BLoC emits a loading state, then asks the repository for the currency list.
+The repository delegates to the data source.
+The data source calls `GET /currencies` and receives a 201-item JSON array.
+Each array element is parsed into a `Currency` object via `Currency.fromJson(...)`.
+The list travels back up: data source → repository → BLoC.
+The BLoC emits a loaded state carrying the list.
+The UI renders the currency dropdowns.
+The BLoC then immediately dispatches `FetchRates` for the default pair.
 
-BLoC handler:
-```dart
-void _onSelectTarget(SelectTargetCurrency event, Emitter<CurrencyState> emit) {
-  emit(state.copyWith(targetCurrencyCode: 'NGN'));
-  add(FetchRates()); // fires a new HTTP request
-}
-```
+---
 
-### Step 4 — Rate is fetched
+**Step 2 — User selects a new target currency**
 
-HTTP GET:
-```
-https://api.frankfurter.dev/v2/rate/USD/NGN
-```
+The dropdown widget dispatches `SelectTargetCurrency('NGN')`.
+The BLoC updates `targetCurrencyCode` in state, then dispatches `FetchRates`.
 
-API response:
+---
+
+**Step 3 — Rate is fetched**
+
+`FetchRates` arrives at the BLoC.
+The BLoC emits a loading state, then calls `repository.getRate('USD', 'NGN')`.
+The data source calls `GET /rate/USD/NGN`.
+The API responds:
 ```json
 { "date": "2026-07-17", "base": "USD", "quote": "NGN", "rate": 1388.28 }
 ```
+The response is parsed into an `ExchangeRate` object.
+The BLoC emits a loaded state carrying the new `ExchangeRate`.
 
-BLoC emits:
-```dart
-state.copyWith(
-  exchangeRate: ExchangeRate(base: 'USD', quote: 'NGN', rate: 1388.28, ...),
-  status: RateStatus.loaded,
-)
-```
+---
 
-### Step 5 — User types 50
+**Step 4 — User enters an amount**
 
-```dart
-context.read<CurrencyBloc>().add(SetAmount(50.0));
-```
+The amount input dispatches `SetAmount(50.0)`.
+The BLoC updates `amount` in state. **No network call is made.**
+The `convertedAmount` getter on `CurrencyState` computes `50.0 × 1388.28 = 69,414.00` on demand.
+The `ConversionResult` widget rebuilds and displays `69,414.00 NGN`.
 
-The BLoC stores the new amount and re-emits state. **No network call happens.** The conversion is pure arithmetic using the already-stored rate.
+---
 
-### Step 6 — Widget displays the result
+**Step 5 — A network error occurs**
 
-```dart
-BlocBuilder<CurrencyBloc, CurrencyState>(
-  builder: (context, state) {
-    final result = state.convertedAmount; // 50.0 * 1388.28 = 69414.0
-    return Text(
-      result != null
-          ? '${result.toStringAsFixed(2)} ${state.targetCurrencyCode}'
-          : '--',
-      style: Theme.of(context).textTheme.headlineLarge,
-    );
-  },
-)
-```
-
-**Displayed:** `69414.00 NGN`
-
-The `convertedAmount` getter on `CurrencyState` does the maths:
-```dart
-double? get convertedAmount =>
-    exchangeRate != null ? exchangeRate!.convert(amount) : null;
-```
-
-No conversion logic lives in the widget.
+Suppose the device loses connectivity when `FetchRates` is in flight.
+The data source receives a `SocketException`.
+The exception travels up to the BLoC's catch block.
+The BLoC emits an error state: `status: RateStatus.error`, `errorMessage: 'No internet connection.'`
+The UI renders the error message and a Retry button.
+The user taps Retry → `FetchRates` is dispatched again → the flow restarts from Step 3.
 
 ---
 
 ## 13. Tier 2 — History Chart Endpoint
 
-For the 7-day rate history chart, call the time-series endpoint and map the results to `fl_chart` data.
-
 ### Fetching the data
 
-```dart
-// Already implemented in RemoteDataSourceImpl.fetchHistory()
-final List<RatePoint> history = await repository.getHistory('USD', 'NGN', 7);
-```
+Call `repository.getHistory(base, quote, 7)` — your data source implementation computes the `from` and `to` dates and builds the URL automatically. It returns `List<RatePoint>`.
 
-This gives you a list of 7 `RatePoint` objects, one per calendar day.
+This fetch must be triggered by the BLoC — not directly from a widget. If you add a separate history BLoC or extend `CurrencyBloc`, the loading and error state for historical data must be tracked **independently** of the live rate state. A failed history fetch must not clear the live conversion result.
 
-### Converting to `FlSpot` data for fl_chart
+### Mapping to chart data
 
-`LineChart` from `fl_chart` takes a list of `FlSpot(x, y)`. Use the list index as `x` and the rate as `y`:
+`fl_chart`'s `LineChart` expects a list of `FlSpot(x, y)`. Use the list **index** (0–6) as `x` and the rate as `y`. Think about where this mapping belongs — it should not be inside a widget's `build` method.
 
-```dart
-List<FlSpot> toChartSpots(List<RatePoint> points) {
-  return List.generate(points.length, (i) {
-    return FlSpot(i.toDouble(), points[i].rate);
-  });
-}
-```
+### X-axis labels
 
-### X-axis date labels
+You need to display dates on the X axis. Your mapping function has access to both the index (`x`) and the original `RatePoint` list. Use the index to look up the corresponding `RatePoint.date` in `getTitlesWidget`.
 
-Keep a reference to the `points` list and look up by index in `getTitlesWidget`:
+### Weekend behaviour
 
-```dart
-getTitlesWidget: (value, meta) {
-  final index = value.toInt();
-  if (index < 0 || index >= points.length) return const SizedBox.shrink();
-  final date = points[index].date;
-  return Text(
-    '${date.month}/${date.day}',
-    style: const TextStyle(fontSize: 10),
-  );
-},
-```
-
-### Managing history state in BLoC
-
-The history fetch must be managed in BLoC — not directly in a widget. Add a separate event and extend your state to carry history data:
-
-```dart
-class FetchHistory extends CurrencyEvent {}
-
-// In CurrencyState, add:
-final List<RatePoint> rateHistory;
-final RateStatus historyStatus;
-```
-
-Handle it in a separate `on<FetchHistory>` handler, keeping history loading and live-rate loading independent of each other.
+Weekend entries in the response repeat the last Friday rate. This is accurate data — plot all entries as-is. The flat segment on weekends is expected.
 
 ---
 
-## Quick Reference Cheat Sheet
+## Quick Reference
 
 | What you need | Endpoint | Response shape |
 |---|---|---|
-| All available currencies | `GET /currencies` | `List<Currency>` (201 items) |
-| Live rate for one pair | `GET /rate/{base}/{quote}` | Single `ExchangeRate` object |
-| Live rates for multiple targets | `GET /rates?base=X&quotes=A,B,C` | `List<ExchangeRate>` |
-| 7-day history for a pair | `GET /rates?base=X&quotes=Y&from=...&to=...` | `List<RatePoint>` |
+| All available currencies | `GET /currencies` | JSON array → `List<Currency>` |
+| Live rate for one pair | `GET /rate/{base}/{quote}` | Single object → `ExchangeRate` |
+| Live rates for multiple targets | `GET /rates?base=X&quotes=A,B,C` | JSON array → `List<ExchangeRate>` |
+| 7-day history for a pair | `GET /rates?base=X&quotes=Y&from=...&to=...` | JSON array → `List<RatePoint>` |
 
 ---
 
-*Have a question about something not covered here? Reach your mentor before you get blocked — not after you have spent two hours guessing.*
+*Have a question about something not covered here? Come to your mentor before you are blocked — not after you have spent two hours guessing.*
