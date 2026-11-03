@@ -32,3 +32,6 @@ Known Limitations:
 Appetize link for testing the app:
 https://appetize.io/app/b_vkqe2gz6wv46krgwx4mahh5wky
 https://appetize.io/embed/b_vkqe2gz6wv46krgwx4mahh5wky
+
+# APK GOOGLE DRIVE LINK:
+https://drive.google.com/drive/folders/10qiWsiJS1buoj97KdVxoEQcteKrq1d9c?usp=sharing
