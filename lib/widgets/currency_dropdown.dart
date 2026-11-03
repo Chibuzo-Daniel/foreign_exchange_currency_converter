@@ -69,9 +69,9 @@ class CurrencyDropdown extends StatelessWidget {
   }
 
  void _showBottomSheet(BuildContext context) {
-    // MUST be declared outside the builder so the search filter doesn't reset
+    // Create a new list of currency from currency list for user to search from
     List<dynamic> filteredCurrencies = List.from(currencies);
-
+//  bottom sheet for currency selection
     showModalBottomSheet(
       context: context,
       backgroundColor: cardColor,
@@ -129,7 +129,7 @@ class CurrencyDropdown extends StatelessWidget {
     currency.code, 
     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)
   ),
-  // Add this subtitle line to display the extracted currency name
+  
   subtitle: Text(
     currency.name, 
     style: TextStyle(color: Colors.grey[400], fontSize: 13)

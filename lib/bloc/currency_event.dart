@@ -27,3 +27,11 @@ class SetAmount extends CurrencyEvent {
 
 // triggered when the user taps the swap icon button.
 class SwapCurrencies extends CurrencyEvent {}
+
+class LoadFavorites extends CurrencyEvent {}
+
+class ToggleFavoritePair extends CurrencyEvent {
+  final String pair;
+  ToggleFavoritePair(this.pair);
+
+}

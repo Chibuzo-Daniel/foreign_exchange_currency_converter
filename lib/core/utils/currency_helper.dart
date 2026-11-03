@@ -1,5 +1,3 @@
-// lib/core/utils/currency_helper.dart
-
 class CurrencyHelper {
   static String getFlagEmoji(String currencyCode) {
     // Fallback if the code is invalid

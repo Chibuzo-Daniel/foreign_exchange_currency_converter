@@ -36,7 +36,7 @@ class ExchangeRate {
   // generate a label for every pair selected
   String rateLabel(String targetRate) {
     final rate = rates[targetRate] ?? 0.0;
-    final formatter = NumberFormat('#,##0.00');
+    final formatter = NumberFormat('#,##0.0000');
     return '1 $base = ${formatter.format(rate)} $targetRate';
   }
 }

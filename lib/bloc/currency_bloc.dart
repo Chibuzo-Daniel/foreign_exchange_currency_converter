@@ -1,5 +1,4 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-
 import '../data/repositories/currency_repository.dart';
 import 'currency_event.dart';
 import 'currency_state.dart';
@@ -7,7 +6,7 @@ import 'currency_state.dart';
 class CurrencyBloc extends Bloc<CurrencyEvent, CurrencyState> {
   final CurrencyRepository repository;
 
-  // The constructor requires the repository and sets the initial state.
+  // the constructor requires the repository and sets the initial state.
   CurrencyBloc({required this.repository}) : super(const CurrencyState()) {
     // We register a listener for every single event using 'on<Event>'
     on<LoadCurrencies>(_onLoadCurrencies);
@@ -16,6 +15,8 @@ class CurrencyBloc extends Bloc<CurrencyEvent, CurrencyState> {
     on<SelectTargetCurrency>(_onSelectTargetCurrency);
     on<SetAmount>(_onSetAmount);
     on<SwapCurrencies>(_onSwapCurrencies);
+    on<LoadFavorites>(_onLoadFavorites);
+    on<ToggleFavoritePair>(_onToggleFavoritePair);
   }
 
   // triggered once when the app opens.
@@ -41,19 +42,36 @@ class CurrencyBloc extends Bloc<CurrencyEvent, CurrencyState> {
     }
   }
 
-  // triggered to get the actual conversion math.
+  // triggered to get the actual rates and history.
   Future<void> _onFetchRates(
     FetchRates event,
     Emitter<CurrencyState> emit,
   ) async {
-    emit(state.copyWith(status: RateStatus.loading));
+    // trigger loading states for BOTH live rate and history independently
+    emit(
+      state.copyWith(
+        status: RateStatus.loading,
+        historyStatus: RateStatus.loading,
+      ),
+    );
+
+    // fetch live rate
     try {
       final rate = await repository.getRate(
         state.baseCurrencyCode,
         state.targetCurrencyCode,
       );
-
-      emit(state.copyWith(status: RateStatus.loaded, exchangeRate: rate));
+      final isStale = await repository.isRateStale(
+        state.baseCurrencyCode,
+        state.targetCurrencyCode,
+      );
+      emit(
+        state.copyWith(
+          status: RateStatus.loaded,
+          exchangeRate: rate,
+          isStale: isStale,
+        ),
+      );
     } catch (e) {
       String message = e.toString();
       if (message.contains('Failed host lookup') ||
@@ -62,6 +80,43 @@ class CurrencyBloc extends Bloc<CurrencyEvent, CurrencyState> {
       }
       emit(state.copyWith(status: RateStatus.error, errorMessage: message));
     }
+
+    // fetch history data
+    try {
+      // history for 7 days
+      final history = await repository.getHistory(
+        state.baseCurrencyCode,
+        state.targetCurrencyCode,
+        7,
+      );
+      emit(
+        state.copyWith(historyStatus: RateStatus.loaded, historyRates: history),
+      );
+      emit(
+        state.copyWith(historyStatus: RateStatus.loaded, historyRates: history),
+      );
+    } catch (e) {
+      // error message for failed history fetch
+      emit(
+        state.copyWith(
+          historyStatus: RateStatus.error,
+          historyErrorMessage: 'Failed to load chart data',
+        ),
+      );
+    }
+  }
+
+  //Handle favorites
+  void _onLoadFavorites(LoadFavorites event, Emitter<CurrencyState> emit) {
+    emit(state.copyWith(favorites: repository.getFavorites()));
+  }
+
+  Future<void> _onToggleFavoritePair(
+    ToggleFavoritePair event,
+    Emitter<CurrencyState> emit,
+  ) async {
+    await repository.toggleFavorite(event.pair);
+    emit(state.copyWith(favorites: repository.getFavorites()));
   }
 
   // if user picks a new "From" currency
@@ -70,7 +125,7 @@ class CurrencyBloc extends Bloc<CurrencyEvent, CurrencyState> {
     Emitter<CurrencyState> emit,
   ) {
     emit(state.copyWith(baseCurrencyCode: event.code));
-    add(FetchRates()); // Fetch new rate for the new pair
+    add(FetchRates()); // fetch new rate for the new pair
   }
 
   // if user picks a new "To" currency
@@ -79,7 +134,7 @@ class CurrencyBloc extends Bloc<CurrencyEvent, CurrencyState> {
     Emitter<CurrencyState> emit,
   ) {
     emit(state.copyWith(targetCurrencyCode: event.code));
-    add(FetchRates()); // Fetch new rate for the new pair
+    add(FetchRates()); // fetch new rate for the new pair
   }
 
   // if user taps the swap button
@@ -90,7 +145,7 @@ class CurrencyBloc extends Bloc<CurrencyEvent, CurrencyState> {
     emit(
       state.copyWith(baseCurrencyCode: oldTarget, targetCurrencyCode: oldBase),
     );
-    add(FetchRates()); // Fetch new rate since they are swapped
+    add(FetchRates()); // fetch new rate since they are swapped
   }
 
   // if user types a number in the text field

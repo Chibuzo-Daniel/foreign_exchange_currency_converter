@@ -22,7 +22,7 @@ class ConversionResult extends StatelessWidget {
   Widget build(BuildContext context) {
     // Create a formatter that forces 2 decimal places and adds commas
     final formatter = NumberFormat('#,##0.00');
-
+// the card holding the result
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
